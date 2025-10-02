@@ -45,7 +45,7 @@ module "origin_pool" {
   origin_port              = var.origin_port
   origin_labels            = var.origin_labels
   skip_server_verification = var.skip_server_verification
-  no_mtls                  = var.no_mtls
+  enable_tls               = var.enable_tls
 
   # --- Health Check Configuration ---
   attach_healthcheck = each.value.attach_healthcheck
@@ -53,7 +53,8 @@ module "origin_pool" {
 
   # --- Site Configuration ---
   network_type = var.network_type
-  site_name    = var.site_name
+  site_locator_type  = var.site_locator_type
+  vsite_or_site_name = var.vsite_or_site_name
 
   # --- Origin Server Type Specific Parameters ---
   # These arguments use conditional logic to pass a value only if the
@@ -65,6 +66,21 @@ module "origin_pool" {
   dns_name_public = var.origin_server_type == "public_name" ? var.dns_name_public : null
 }
 
+# ==============================================================================
+# --- (New) App Firewall Module ---
+# ==============================================================================
+
+# This module is called for each LB where 'enable_app_firewall' AND 'create_new_waf' are true.
+module "app_firewall" {
+  source   = "./modules/app_firewall"
+  for_each = {
+    for idx, lb in local.lb_map : idx => lb
+    if lb.enable_app_firewall && lb.create_new_waf
+  }
+
+  app_firewall_name = each.value.app_firewall_name
+  namespace         = var.waf_namespace
+}
 # ==============================================================================
 # --- HTTP Load Balancer Module ---
 # ==============================================================================
@@ -95,7 +111,7 @@ module "http_load_balancer" {
   ip_threat_categories               = each.value.ip_threat_categories
   enable_bot_defense                 = each.value.enable_bot_defense
   enable_app_firewall                = each.value.enable_app_firewall
-  app_firewall_name                  = each.value.app_firewall_name
+  app_firewall_name                  = each.value.create_new_waf ? module.app_firewall[each.key].name : each.value.app_firewall_name
   enable_csrf                        = each.value.enable_csrf
   csrf_policy_mode                   = each.value.csrf_policy_mode
   csrf_custom_domains                = split(",", each.value.csrf_custom_domains)
@@ -104,8 +120,11 @@ module "http_load_balancer" {
   # --- Advertisement Configuration ---
   advertise_on_public_default_vip = each.value.advertise_on_public_default_vip
   advertise_custom                = each.value.advertise_custom
-  custom_site_name                = each.value.custom_site_name
+  advertise_site_name             = each.value.advertise_site_name 
   site_network                    = each.value.site_network
+  advertise_where                 = each.value.advertise_where
+  vsite_namespace                 = each.value.vsite_namespace
+  
 
   # --- Origin Pool Selection ---
   # This conditionally selects the name of the newly created pool (by referencing the
