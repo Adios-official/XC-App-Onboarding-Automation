@@ -34,10 +34,10 @@ variable "skip_server_verification" {
   default     = false
 }
 
-variable "no_mtls" {
-  description = "If true, disable mutual TLS for the connection to the origin pool."
+variable "enable_tls" {
+  description = "If true, configures the origin pool to use TLS. If false, configures it to use no_tls."
   type        = bool
-  default     = true
+  default     = false
 }
 
 # ==============================================================================
@@ -67,6 +67,7 @@ variable "ip_address_public" {
   description = "The public IP address for a 'public_ip' origin."
   type        = string
   default     = ""
+
 }
 
 variable "dns_name_private" {
@@ -95,7 +96,18 @@ variable "network_type" {
   }
 }
 
-variable "site_name" {
+# This variable acts as the switch to choose the block.
+variable "site_locator_type" {
+  description = "The type of site locator to use. Must be 'site' or 'virtual_site'."
+  type        = string
+  validation {
+    condition     = contains(["site", "virtual_site",""], var.site_locator_type)
+    error_message = "site_locator_type must be either 'site' or 'virtual_site'."
+  }
+}
+
+
+variable "vsite_or_site_name" {
   description = "The name of the site for the site locator."
   type        = string
 }
