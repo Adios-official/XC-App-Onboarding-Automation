@@ -65,6 +65,12 @@ variable "no_mtls" {
   default     = true
 }
 
+variable "enable_tls" {
+  description = "Controls whether a new origin pool uses TLS. This is a top-level variable populated by the orchestrator."
+  type        = bool
+  default     = false # A safe default if the script fails to provide a value.
+}
+
 # --- Origin Pool Health check Specific Variables ---
 
 variable "healthcheck_name" {
@@ -82,6 +88,7 @@ variable "healthcheck_http_path" {
   type        = string
   default     = "/"
 }
+
 
 # --- Origin Server Type Specific Variables ---
 
@@ -128,12 +135,26 @@ variable "network_type" {
   }
 }
 
-variable "site_name" {
+variable "site_locator_type" {
+  description = "The type of site locator to use for a new origin pool ('site' or 'virtual_site')."
+  type        = string
+  default     = "" # Optional, will default to 'site' if left blank in Excel and module
+}
+
+variable "vsite_or_site_name" {
   description = "The name of the site for the site locator."
   type        = string
   default     = ""
 }
 
+# ==============================================================================
+# === WAF Configuration Variables ===
+# ==============================================================================
+variable "waf_namespace" {
+  description = "The namespace for a new App Firewall, if one is being created."
+  type        = string
+  default     = "" # Make it optional
+}
 # ==============================================================================
 # === Main Load Balancer Configuration Object ===
 # ==============================================================================
@@ -156,13 +177,14 @@ variable "load_balancers" {
     custom_cert_namespace           = optional(string, "shared")
 
     # --- Security & Feature Configuration ---
-    ip_threat_categories            = optional(list(string), ["SPAM_SOURCES","WINDOWS_EXPLOITS","WEB_ATTACKS","BOTNETS","REPUTATION","PHISHING","TOR_PROXY","MOBILE_THREATS","DENIAL_OF_SERVICE","NETWORK"])
+    ip_threat_categories            = optional(list(string), ["SPAM_SOURCES","WINDOWS_EXPLOITS","WEB_ATTACKS","BOTNETS","PHISHING","TOR_PROXY","MOBILE_THREATS","DENIAL_OF_SERVICE","NETWORK"])
     enable_bot_defense              = optional(bool, false)
     enable_app_firewall             = optional(bool, false)
     enable_csrf                     = optional(bool, false)
     app_firewall_name               = optional(string)
     csrf_policy_mode                = optional(string, "disabled")
     csrf_custom_domains             = optional(string, "")
+    create_new_waf                  = optional(bool, false)
 
     # --- Origin Pool Configuration ---
     create_origin_pool              = bool
@@ -175,8 +197,10 @@ variable "load_balancers" {
     # --- Advertisement Configuration ---
     advertise_on_public_default_vip = bool
     advertise_custom                = bool
-    custom_site_name                = optional(string)
+    advertise_site_name             = optional(string)
     site_network                    = optional(string)
+    advertise_where                 = optional(string)
+    vsite_namespace                 = optional(string)
 
   }))
 }
