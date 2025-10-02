@@ -24,6 +24,7 @@ resource "volterra_healthcheck" "this" {
     content {
       use_origin_server_name = true
       path                   = var.healthcheck_http_path
+      expected_status_codes  = ["200", "302"]
     }
   }
   healthy_threshold = 3
