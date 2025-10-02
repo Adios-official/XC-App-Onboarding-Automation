@@ -1,7 +1,21 @@
 # ==============================================================================
-# --- F5 XC HTTP Load Balancer Resource ---
+# --- F5 User Identification Policy Resource ---
 # ==============================================================================
 
+resource "volterra_user_identification" "user-uip" {
+  name      = "${var.lb_name}-user-id-policy"
+  namespace = var.namespace
+
+  rules {
+    // One of the arguments from this list "client_asn client_city client_country client_ip client_region cookie_name http_header_name ip_and_http_header_name ip_and_ja4_tls_fingerprint ip_and_tls_fingerprint ja4_tls_fingerprint jwt_claim_name none query_param_key tls_fingerprint" must be set
+
+    ip_and_ja4_tls_fingerprint = true
+  }
+}
+
+# ==============================================================================
+# --- F5 XC HTTP Load Balancer Resource ---
+# ==============================================================================
 resource "volterra_http_loadbalancer" "http_lb" {
   count     = var.lb_count
   
@@ -66,16 +80,33 @@ resource "volterra_http_loadbalancer" "http_lb" {
   # Advertise on the public default VIP.
   advertise_on_public_default_vip = var.advertise_on_public_default_vip
 
-  # This block is created ONLY IF 'advertise_custom' is true.
+  # This dynamic block is created ONLY IF 'advertise_custom' is true.
   dynamic "advertise_custom" {
     for_each = var.advertise_custom ? [1] : []
     content {
       advertise_where {
-        site {
-          network = var.site_network
-          site {
-            namespace = "system"
-            name      = var.custom_site_name
+        
+        # This dynamic block is created ONLY IF the choice is "site".
+        dynamic "site" {
+          for_each = var.advertise_where == "site" ? [1] : []
+          content {
+            network = var.site_network
+            site {
+              namespace = "system"
+              name      = var.advertise_site_name
+            }
+          }
+        }
+
+        # This dynamic block is created ONLY IF the choice is "virtual_site".
+        dynamic "virtual_site" {
+          for_each = var.advertise_where == "virtual_site" ? [1] : []
+          content {
+            network = var.site_network
+            virtual_site {
+              namespace = var.vsite_namespace
+              name      = var.advertise_site_name
+            }
           }
         }
       }
@@ -106,11 +137,15 @@ resource "volterra_http_loadbalancer" "http_lb" {
   # ==============================================================================
 
   # --- General Security Settings ---
-  enable_malicious_user_detection = var.enable_malicious_user_detection
+  enable_malicious_user_detection = true
   service_policies_from_namespace = true
   disable_trust_client_ip_headers = true
-  user_id_client_ip               = true
   disable_api_discovery           = true
+  user_identification {
+    name=volterra_user_identification.user-uip.name
+    namespace = var.namespace
+  }
+  
 
   # --- IP Reputation ---
   enable_ip_reputation {
