@@ -127,7 +127,7 @@ variable "csrf_custom_domains" {
 variable "enable_malicious_user_detection" {
   description = "Enable detection for malicious users."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "disable_api_discovery" {
@@ -166,8 +166,20 @@ variable "advertise_custom" {
   default     = false
 }
 
-variable "custom_site_name" {
-  description = "The name of the site for custom advertisement."
+variable "advertise_site_name" {
+  description = "The name of the site or virtual site for custom advertisement."
+  type        = string
+  default     = ""
+}
+
+variable "vsite_namespace" {
+  description = "The namespace for the virtual site when using custom advertisement."
+  type        = string
+  default     = "" # Default to empty, as it's only needed for virtual_site
+}
+
+variable "advertise_where" {
+  description = "The type of location to advertise on. Must be 'site' or 'virtual_site'."
   type        = string
   default     = ""
 }
